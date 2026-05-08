@@ -48,7 +48,8 @@ export async function saveCard(card: CardData): Promise<string> {
 
     const { error } = await supabase.from("cards").insert({
       short_id: shortId,
-      data: payload as unknown as Record<string, unknown>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: payload as any,
     });
 
     if (!error) return shortId;
