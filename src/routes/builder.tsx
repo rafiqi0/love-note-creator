@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { DEFAULT_CARD, type CardData } from "@/lib/card-types";
-import { encodeCard } from "@/lib/share-link";
+import { saveCard } from "@/lib/card-storage";
 import CardBuilder from "@/components/CardBuilder";
 import CardRenderer from "@/components/CardRenderer";
-import { Eye, Pencil, Copy, Check, Sparkles } from "lucide-react";
+import { Eye, Pencil, Copy, Check, Sparkles, Loader2, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/builder")({
   head: () => ({
@@ -19,20 +20,41 @@ export const Route = createFileRoute("/builder")({
 function BuilderPage() {
   const [card, setCard] = useState<CardData>(DEFAULT_CARD);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const shareUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const enc = encodeCard(card);
-    return `${window.location.origin}/card?d=${enc}`;
-  }, [card]);
-
-  const copy = async () => {
+  const publish = async () => {
+    setSaving(true);
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {}
+      const shortId = await saveCard(card);
+      const url = `${window.location.origin}/c/${shortId}`;
+      setShareUrl(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {}
+      toast.success("Card published! Link copied.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Couldn't publish card";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyAgain = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  // Any change after publishing invalidates the saved link.
+  const handleCardChange = (next: CardData) => {
+    setCard(next);
+    if (shareUrl) setShareUrl(null);
   };
 
   return (
@@ -51,20 +73,35 @@ function BuilderPage() {
                 <Eye size={14} className="inline mr-1" /> Preview
               </button>
             </div>
-            <button className="btn-sage" onClick={copy}>
-              {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy share link</>}
-            </button>
+            {shareUrl ? (
+              <button className="btn-sage" onClick={copyAgain}>
+                {copied ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy link</>}
+              </button>
+            ) : (
+              <button className="btn-sage" onClick={publish} disabled={saving}>
+                {saving ? <><Loader2 size={16} className="animate-spin" /> Publishing…</> : <><Share2 size={16} /> Publish & share</>}
+              </button>
+            )}
           </div>
         </div>
+        {shareUrl && (
+          <div className="max-w-6xl mx-auto px-4 pb-3">
+            <div className="flex items-center gap-2 bg-[var(--cream-dark)] rounded-xl px-3 py-2 text-sm">
+              <span className="text-[var(--warm-gray)] text-xs uppercase tracking-wider mr-1">Share link</span>
+              <code className="flex-1 truncate text-[var(--gold-dark)]">{shareUrl}</code>
+              <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost-soft">Open</a>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 grid lg:grid-cols-2 gap-6">
         <div className={`${tab === "edit" ? "" : "hidden lg:block"}`}>
-          <CardBuilder card={card} onChange={setCard} />
+          <CardBuilder card={card} onChange={handleCardChange} />
         </div>
         <div className={`${tab === "preview" ? "" : "hidden lg:block"}`}>
-          <div className="lg:sticky lg:top-20">
-            <div className="rounded-3xl border border-[var(--border)] overflow-hidden shadow-[var(--shadow-elegant)] max-h-[calc(100vh-7rem)] overflow-y-auto">
+          <div className="lg:sticky lg:top-24">
+            <div className="rounded-3xl border border-[var(--border)] overflow-hidden shadow-[var(--shadow-elegant)] max-h-[calc(100vh-8rem)] overflow-y-auto">
               <CardRenderer card={card} preview />
             </div>
           </div>
