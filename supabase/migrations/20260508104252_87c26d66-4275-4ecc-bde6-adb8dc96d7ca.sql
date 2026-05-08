@@ -10,13 +10,12 @@ alter table public.cards
 -- The bucket is public, so direct file URLs still work without an RLS SELECT policy.
 drop policy if exists "Card photos are publicly viewable" on storage.objects;
 
--- Restrict uploads: only allow image-ish extensions and limit file size via name pattern (size enforced by bucket settings)
+-- Restrict uploads: allow uploads into the card-photos bucket and enforce size/type through bucket settings
 drop policy if exists "Anyone can upload card photos" on storage.objects;
 create policy "Anyone can upload card photos"
   on storage.objects for insert
   with check (
     bucket_id = 'card-photos'
-    and (lower(name) like '%.jpg' or lower(name) like '%.jpeg' or lower(name) like '%.png' or lower(name) like '%.webp' or lower(name) like '%.gif')
   );
 
 -- Set bucket file size limit (5MB) and allowed MIME types
