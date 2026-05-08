@@ -14,7 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cards: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          short_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          id?: string
+          short_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          short_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
