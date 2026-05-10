@@ -32,7 +32,7 @@ async function uploadHeroPhotoIfNeeded(photo: string | undefined, shortId: strin
   const path = `${shortId}/hero.${ext}`;
   const { error } = await supabase.storage.from("card-photos").upload(path, blob, {
     contentType: mime,
-    upsert: true,
+    upsert: false,
   });
   if (error) throw error;
   const { data } = supabase.storage.from("card-photos").getPublicUrl(path);
